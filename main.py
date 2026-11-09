@@ -31,6 +31,7 @@ from core.audio_engine import AudioEngine
 from core.hand_tracker import HandTracker
 from core.looper import LiveLooper
 from core.scale_quantizer import ScaleQuantizer
+from core.updater import AutoUpdater, restart_application
 from instruments.air_cello import AirCelloInstrument
 from instruments.air_drums import AirDrumsInstrument
 from instruments.air_guitar import AirGuitarInstrument
@@ -88,6 +89,28 @@ class AirBeatStudioApp:
         self.last_hover_switch: float = 0.0
         self.capsule_rects: List[Tuple[pygame.Rect, int]] = []
         self.settings_buttons: Dict[str, pygame.Rect] = {}
+
+        # Otomatik Güncelleyici (Açılışta GitHub'dan yeni revize varsa otomatik çeker)
+        self.updater = AutoUpdater()
+        self.restart_requested: bool = False
+        self.updater.check_and_auto_update_async(self._on_auto_update_ready)
+
+    def _on_auto_update_ready(self) -> None:
+        self.restart_requested = True
+
+    def trigger_manual_update(self) -> None:
+        if self.updater.is_updating:
+            return
+        import threading
+
+        def _job() -> None:
+            info = self.updater.check_for_updates()
+            if info.get("has_update"):
+                if self.updater.apply_update():
+                    time.sleep(0.8)
+                    self.restart_requested = True
+
+        threading.Thread(target=_job, daemon=True).start()
 
     def _open_camera(self, cam_idx: int) -> None:
         if self.cap is not None:
@@ -178,6 +201,8 @@ class AirBeatStudioApp:
                     chords = self.quantizer.get_chords()
                     if chords:
                         self.audio.trigger_guitar_chord(chords[0][1], velocity=0.8)
+                elif key == "update":
+                    self.trigger_manual_update()
                 break
 
     def _replay_looper_event(self, event_type: str, payload: Dict) -> None:
@@ -243,6 +268,9 @@ class AirBeatStudioApp:
                     elif event.key == pygame.K_t:
                         s_lbl = self.quantizer.cycle_melody_guide()
                         self.vfx.spawn_hit_vfx(self.WIDTH // 2, 110, (0, 235, 255), intensity=0.7, label=s_lbl)
+                    elif event.key == pygame.K_u:
+                        self.trigger_manual_update()
+                        self.vfx.spawn_hit_vfx(self.WIDTH // 2, 110, (255, 180, 50), intensity=0.7, label="Guncelleme Kontrol Ediliyor...")
                     elif event.key == pygame.K_SPACE and self.current_inst_idx == 0 and not self.show_settings:
                         self.drums.trigger_kick_pedal(self.audio, self.vfx, self.looper)
                     elif event.key == pygame.K_1:
@@ -368,10 +396,28 @@ class AirBeatStudioApp:
                     self.tracker.sensitivity,
                     self.quantizer.current_scale_name,
                     self.quantizer.current_naming_mode_name,
+                    self.updater.status_text,
+                    self.updater.has_update,
                 )
+
+            # Otomatik Güncelleme indiriliyorsa veya tamamlandıysa üstte bilgi bandı göster
+            if self.updater.is_updating or self.restart_requested:
+                upd_bar = pygame.Rect(self.WIDTH // 2 - 260, 82, 520, 38)
+                pygame.draw.rect(self.screen, (25, 110, 75), upd_bar, border_radius=10)
+                pygame.draw.rect(self.screen, (100, 255, 180), upd_bar, width=2, border_radius=10)
+                u_txt = self.vfx.font_sm.render(self.updater.status_text, True, (255, 255, 255))
+                self.screen.blit(u_txt, (upd_bar.centerx - u_txt.get_width() // 2, upd_bar.centery - u_txt.get_height() // 2))
 
             pygame.display.flip()
             self.clock.tick(60)
+
+            if self.restart_requested:
+                self.audio.close()
+                if self.cap is not None and self.cap.isOpened():
+                    self.cap.release()
+                pygame.quit()
+                restart_application()
+                return
 
         self.audio.close()
         if self.cap is not None and self.cap.isOpened():

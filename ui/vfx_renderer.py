@@ -450,6 +450,8 @@ class VFXRenderer:
         sensitivity: float,
         scale_name: str,
         naming_mode_name: str = "DO-RE-MI (Solfej)",
+        update_status: str = "Guncel",
+        has_update: bool = False,
     ) -> Dict[str, pygame.Rect]:
         buttons: Dict[str, pygame.Rect] = {}
 
@@ -457,7 +459,7 @@ class VFXRenderer:
         dim.fill((6, 8, 16, 215))
         screen.blit(dim, (0, 0))
 
-        mw, mh = 780, 580
+        mw, mh = 780, 620
         mx = (self.width - mw) // 2
         my = (self.height - mh) // 2
         panel = pygame.Rect(mx, my, mw, mh)
@@ -466,9 +468,9 @@ class VFXRenderer:
         pygame.draw.rect(screen, (0, 215, 255), panel, width=3, border_radius=18)
 
         title = self.font_lg.render("SISTEM VE OYUN AYARLARI (SETTINGS)", True, (0, 235, 255))
-        screen.blit(title, (mx + 32, my + 20))
+        screen.blit(title, (mx + 32, my + 18))
 
-        close_btn = pygame.Rect(mx + mw - 125, my + 18, 100, 40)
+        close_btn = pygame.Rect(mx + mw - 125, my + 16, 100, 40)
         buttons["close"] = close_btn
         pygame.draw.rect(screen, (180, 45, 75), close_btn, border_radius=10)
         c_txt = self.font_sm.render("KAPAT [S]", True, (255, 255, 255))
@@ -483,34 +485,40 @@ class VFXRenderer:
             ("sensitivity", "6. El Vurus Hassasiyeti:", f"%{int(sensitivity * 100)} (Dokunma / Vurus Esigi)", "Hassasiyet >"),
             ("volume", "7. Ana Ses Seviyesi:", f"%{int(master_vol * 100)}", "Ses Seviyesi >"),
             ("scale", "8. Muzik Gam Kilidi:", f"{scale_name[:36]}", "Gam Degistir >"),
+            ("update", "9. Otomatik Guncelleme:", f"{update_status}", "SIMDI GUNCELLE [U]" if has_update else "KONTROL ET [U]"),
         ]
 
-        start_y = my + 78
-        row_h = 56
+        start_y = my + 70
+        row_h = 54
         for idx, (key, label_txt, val_txt, btn_txt) in enumerate(rows):
             ry = start_y + idx * row_h
-            row_rect = pygame.Rect(mx + 28, ry, mw - 56, 48)
+            row_rect = pygame.Rect(mx + 28, ry, mw - 56, 46)
             pygame.draw.rect(screen, (28, 36, 62), row_rect, border_radius=10)
             pygame.draw.rect(screen, (60, 85, 130), row_rect, width=1, border_radius=10)
 
             lbl_s = self.font_sm.render(label_txt, True, (170, 215, 255))
-            screen.blit(lbl_s, (row_rect.x + 16, row_rect.y + 13))
+            screen.blit(lbl_s, (row_rect.x + 16, row_rect.y + 12))
 
             val_s = self.font_sm.render(val_txt, True, (255, 245, 150))
-            screen.blit(val_s, (row_rect.x + 225, row_rect.y + 13))
+            screen.blit(val_s, (row_rect.x + 225, row_rect.y + 12))
 
-            act_btn = pygame.Rect(row_rect.right - 168, row_rect.y + 6, 158, 36)
+            act_btn = pygame.Rect(row_rect.right - 168, row_rect.y + 5, 158, 36)
             buttons[key] = act_btn
-            btn_col = (0, 175, 120) if key == "test_sound" else (0, 140, 210)
+            if key == "update" and has_update:
+                btn_col = (230, 120, 20)
+            elif key == "test_sound":
+                btn_col = (0, 175, 120)
+            else:
+                btn_col = (0, 140, 210)
             pygame.draw.rect(screen, btn_col, act_btn, border_radius=8)
             pygame.draw.rect(screen, (180, 240, 255), act_btn, width=1, border_radius=8)
             b_s = self.font_xs.render(btn_txt, True, (255, 255, 255))
             screen.blit(b_s, (act_btn.centerx - b_s.get_width() // 2, act_btn.centery - b_s.get_height() // 2))
 
         footer = self.font_xs.render(
-            "Ipucu: Ses gelmiyorsa '2. Hoparlor / Kulaklik' butonuna basarak aktif ses cihazinizi (SteelSeries / Hoparlor) secin.",
+            "Ipucu: Program her acilista GitHub'dan yeni guncellemeleri otomatik kontrol eder ve indirir.",
             True,
             (190, 210, 240),
         )
-        screen.blit(footer, (mx + 32, my + mh - 32))
+        screen.blit(footer, (mx + 32, my + mh - 28))
         return buttons
