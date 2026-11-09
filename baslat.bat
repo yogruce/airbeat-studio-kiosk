@@ -16,15 +16,21 @@ if exist "AirBeatStudioKiosk.exe" (
     goto :RUN_EXE
 )
 
-:: 2. Python Sanal Ortami Kontrolu (Ilk Kurulum)
+:: 2. Python Sanal Ortami Kontrolu (Ilk Kurulum - Python 3.12 / 3.11 oncelikli)
 if not exist .venv\Scripts\python.exe (
     echo [BILGI] Ilk kullanim algilandi, sanal ortam hazirlaniyor...
-    where python >nul 2>&1
+    py -3.12 -m venv .venv >nul 2>&1
     if errorlevel 1 (
-        echo [BILGI] Python bulunamadi, winget ile otomatik kuruluyor...
-        winget install -e --id Python.Python.3.12 --accept-package-agreements --accept-source-agreements
+        py -3.11 -m venv .venv >nul 2>&1
     )
-    python -m venv .venv
+    if errorlevel 1 (
+        python -m venv .venv >nul 2>&1
+    )
+    if not exist .venv\Scripts\python.exe (
+        echo [BILGI] Python 3.12 bulunamadi, winget ile otomatik kuruluyor...
+        winget install -e --id Python.Python.3.12 --accept-package-agreements --accept-source-agreements
+        py -3.12 -m venv .venv
+    )
 )
 
 :: 3. Gerekli kutuphaneler kurulu mu?
